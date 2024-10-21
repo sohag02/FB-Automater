@@ -134,3 +134,9 @@ def getBio():
         data = json.load(f)
         bio = random.choice(data['bio'])
         return remove_non_bmp_characters(bio + " ")
+
+
+def get_proxies():
+    with open("internal/working_proxies.txt", "r") as f:
+        proxies = f.readlines()
+    return proxies

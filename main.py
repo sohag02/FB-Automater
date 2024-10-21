@@ -14,7 +14,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from config import Config
 from live import run_facebook_instance
 from post import post
-from utils import comment, get_comments, like, load_cookies, setup_driver, getBio, verify_login
+from utils import comment, get_comments, get_proxies, like, load_cookies, setup_driver, getBio, verify_login
 from db import update_user_profile, get_user_profile, insert_user_profile
 from fbProfile import setProfile
 from friend import getFriends, accept_friend_requests
@@ -32,19 +32,16 @@ config = Config()
 
 if config.use_proxy:
     if config.rotating_proxies:
-        extension = create_proxy_auth_extension(config.host, config.port, config.proxy_username, config.proxy_password, "internal")
+        extension = create_proxy_auth_extension(
+            config.host, config.port, config.proxy_username, config.proxy_password, "internal")
         # proxy = None
     else:
         check_proxies(config.proxy_file)
 
-def get_proxies():
-    with open("internal/working_proxies.txt", "r") as f:
-        proxies = f.readlines()
-    return proxies
-
 proxies = []
 if config.use_proxy and not config.rotating_proxies:
     proxies = get_proxies()
+
 
 def load_sessions():
     if not os.path.exists("sessions"):
@@ -158,11 +155,11 @@ def watch_reels(driver, count, watch_time, likes=None, comments=None):
 
 def watch_reels_from_username(session_file: str):
     if config.use_proxy:
-            if config.rotating_proxies:
-                proxy = extension
-            else:
-                proxy = proxies[0]
-                proxies.pop(0)
+        if config.rotating_proxies:
+            proxy = extension
+        else:
+            proxy = proxies[0]
+            proxies.pop(0)
     with setup_driver(headless=config.headless, session_name=session_file, proxy=proxy) as driver:
         driver.get("https://www.facebook.com/")
         load_cookies(driver, f'sessions/{session_file}')
@@ -221,6 +218,14 @@ def process_batch(func: callable, sessions_batch: list, size=5):
 
 
 if __name__ == "__main__":
+
+    res = input("Run Main Script (Press 1) / Run Login Script (Press 2): ")
+
+    if res == '2':
+        import subprocess
+        subprocess.run(['py', 'login.py'])
+        exit()
+
     if config.username:
         for i in range(0, len(session_files), config.threads):
             batch = session_files[i:i + config.threads]

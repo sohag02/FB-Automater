@@ -1,66 +1,82 @@
-from selenium import webdriver
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.options import Options
-from undetected_chromedriver import Chrome
 import pickle
 import time
 import csv
 import logging
 import os
 import pandas as pd
+from utils import setup_driver, get_proxies
+from config import Config
+from proxy import check_proxies
+from proxy_extension import create_proxy_auth_extension
+
+config = Config()
 
 logging.getLogger('selenium').setLevel(logging.ERROR)
 
-def setup_driver():
-    chrome_options = Options()
-    chrome_options.add_argument("--disable-notifications")
-    chrome_options.add_argument("--disable-popup-blocking")
-    chrome_options.add_argument('--log-level=3')  # Suppress logs
-    return Chrome(options=chrome_options)
+if config.use_proxy:
+    if config.rotating_proxies:
+        extension = create_proxy_auth_extension(
+            config.host, config.port, config.proxy_username, config.proxy_password, "internal")
+        # proxy = None
+    else:
+        check_proxies(config.proxy_file)
+
+proxies = []
+if config.use_proxy and not config.rotating_proxies:
+    proxies = get_proxies()
 
 
 def generate_sessions(email, password):
+    proxy = None
+    if config.use_proxy:
+        if config.rotating_proxies:
+            proxy = extension
+        else:
+            proxy = proxies[0]
+            proxies.pop(0)
     try:
-        driver = setup_driver()
-        driver.get("https://www.facebook.com/")
+        with setup_driver(headless=False, session_name=email, proxy=proxy) as driver:
+            driver.get("https://www.facebook.com/")
 
-        # Enter email and password
-        driver.find_element("id", "email").send_keys(email)
-        driver.find_element("id", "pass").send_keys(password)
-        driver.find_element(By.NAME, "login").click()
+            # Enter email and password
+            driver.find_element("id", "email").send_keys(email)
+            driver.find_element("id", "pass").send_keys(password)
+            driver.find_element(By.NAME, "login").click()
 
-        # Wait for login to complete (adjust timing as needed)
-        time.sleep(10)
-        if 'disabled' in driver.current_url:
-            print(f"Login Failed for {email}. Account is Disabled")
-            success = False
-        
-        if success:
-            try:
-                WebDriverWait(driver, 10).until(
-                    EC.element_to_be_clickable(
-                        (By.CSS_SELECTOR, '[aria-label="Your profile"]'))
-                )
-                success = True
-            except Exception:
-                print(f"Login Failed for {email}")
+            # Wait for login to complete (adjust timing as needed)
+            time.sleep(10)
+            if 'disabled' in driver.current_url:
+                print(f"Login Failed for {email}. Account is Disabled")
                 success = False
+            else:
+                success = True
+            
+            if success:
+                try:
+                    WebDriverWait(driver, 10).until(
+                        EC.element_to_be_clickable(
+                            (By.CSS_SELECTOR, '[aria-label="Your profile"]'))
+                    )
+                    success = True
+                except Exception:
+                    print(f"Login Failed for {email}")
+                    success = False
 
-        if success:
-            # Save cookies to a file
-            cookies = driver.get_cookies()
-            with open(f'sessions/{email}.pkl', "wb") as file:
-                pickle.dump(cookies, file)
+            if success:
+                # Save cookies to a file
+                cookies = driver.get_cookies()
+                with open(f'sessions/{email}.pkl', "wb") as file:
+                    pickle.dump(cookies, file)
 
-            print(f"Session Generated for {email}")
+                print(f"Session Generated for {email}")
 
     except Exception as e:
         print(f"Login Failed for {email}")
     finally:
-        driver.quit()
+        # driver.quit()
         return success
 
 if __name__ == "__main__":
