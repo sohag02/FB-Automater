@@ -10,6 +10,7 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
+from undetected_chromedriver import Chrome
 
 # Set up logging
 # logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -38,7 +39,7 @@ def setup_driver(session_name, headless=True):
         chrome_options.add_argument("--headless")
     chrome_options.add_argument("--mute-audio")
 
-    driver = webdriver.Chrome(options=chrome_options)
+    driver = Chrome(options=chrome_options)
     driver.session_name = session_name
     
     try:
