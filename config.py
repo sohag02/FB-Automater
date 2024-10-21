@@ -20,6 +20,18 @@ class Config():
         self.post_interval = int(self.get_config_value("post", "interval"))
         self.headless = config.getboolean("settings", "headless", fallback=True)
 
+        # Proxy properties
+        self.use_proxy = config.getboolean('proxy', 'use_proxy', fallback=False)
+        if self.use_proxy:
+            self.rotating_proxies = config.getboolean('proxy', 'rotating_proxies', fallback=False)
+            if self.rotating_proxies:
+                self.host = config.get('proxy', 'host', fallback=None)
+                self.port = config.get('proxy', 'port', fallback=None)
+                self.proxy_username = config.get('proxy', 'username', fallback=None)
+                self.proxy_password = config.get('proxy', 'password', fallback=None)
+            else:
+                self.proxy_file = config.get('proxy', 'proxy_file', fallback=None)
+
         # Check if config is valid
         self.check_config()
     

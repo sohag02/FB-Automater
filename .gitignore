@@ -8,3 +8,5 @@ testsessions
 *.rar
 *.db
 todo.txt
+internal
+*.csv

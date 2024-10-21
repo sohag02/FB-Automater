@@ -19,6 +19,9 @@ from db import update_user_profile, get_user_profile, insert_user_profile
 from fbProfile import setProfile
 from friend import getFriends, accept_friend_requests
 
+from proxy import check_proxies
+from proxy_extension import create_proxy_auth_extension
+
 logging.getLogger('selenium').setLevel(logging.ERROR)
 
 # Set up logging
@@ -27,20 +30,31 @@ logging.basicConfig(level=logging.INFO,
 
 config = Config()
 
-#  Load Sessions
+if config.use_proxy:
+    if config.rotating_proxies:
+        extension = create_proxy_auth_extension(config.host, config.port, config.proxy_username, config.proxy_password, "internal")
+        # proxy = None
+    else:
+        check_proxies(config.proxy_file)
 
+def get_proxies():
+    with open("internal/working_proxies.txt", "r") as f:
+        proxies = f.readlines()
+    return proxies
+
+proxies = []
+if config.use_proxy and not config.rotating_proxies:
+    proxies = get_proxies()
 
 def load_sessions():
     if not os.path.exists("sessions"):
         logging.error("No Sessions Found")
         exit()
 
-    sessions = os.listdir("sessions")
-    if sessions:
+    if sessions := os.listdir("sessions"):
         return sessions[:config.accounts]
-    else:
-        logging.error("No Sessions Found")
-        exit()
+    logging.error("No Sessions Found")
+    exit()
 
 
 session_files = load_sessions()
@@ -52,24 +66,18 @@ comment_count = 0
 
 
 def profile_status(session_name):
-    user = get_user_profile(session_name)
-    if user:
+    if user := get_user_profile(session_name):
         return user.profile_setup
-    else:
-        insert_user_profile(session_name, datetime.now().date(), False)
-        return False
+    insert_user_profile(session_name, datetime.now().date(), False)
+    return False
 
 
 def post_status(session_name):
     logging.info(f"Checking Post Status for {session_name}")
-    user = get_user_profile(session_name)
-    if user:
+    if user := get_user_profile(session_name):
         date = user.last_post_date
         delta = datetime.now().date() - date
-        if delta.days >= config.post_interval:
-            return True
-        else:
-            return False
+        return delta.days >= config.post_interval
     else:
         insert_user_profile(session_name, datetime.now().date(), False)
         return False
@@ -79,7 +87,7 @@ def navigate_to_reels(driver, profile_url):
     logging.info("Looking for Reels...")
     driver.get(profile_url)
     time.sleep(5)
-    driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+    driver.execute_script("window.scrollTo(0, 500);")
     time.sleep(3)
 
 
@@ -149,7 +157,13 @@ def watch_reels(driver, count, watch_time, likes=None, comments=None):
 
 
 def watch_reels_from_username(session_file: str):
-    with setup_driver(headless=config.headless, session_name=session_file) as driver:
+    if config.use_proxy:
+            if config.rotating_proxies:
+                proxy = extension
+            else:
+                proxy = proxies[0]
+                proxies.pop(0)
+    with setup_driver(headless=config.headless, session_name=session_file, proxy=proxy) as driver:
         driver.get("https://www.facebook.com/")
         load_cookies(driver, f'sessions/{session_file}')
 
@@ -177,10 +191,16 @@ def watch_reels_from_csv():
         for i in range(0, len(reels), config.threads):
             batch = reels[i:i + config.threads]
             sessions = session_files[i:i + config.threads]
-            args = []
-            for index, reel in enumerate(batch):
-                args.append(
-                    (reel[0], config.watch_time, sessions[index], config.likes, config.comments))
+            args = [
+                (
+                    reel[0],
+                    config.watch_time,
+                    sessions[index],
+                    config.likes,
+                    config.comments,
+                )
+                for index, reel in enumerate(batch)
+            ]
             process_batch(watch_reels_from_link, args)
 
 

@@ -11,9 +11,9 @@ like_count = 0
 comment_count = 0
 
 
-def run_facebook_instance(cookies_file, url, likes=None, comments=None, watch_time=None):
+def run_facebook_instance(cookies_file, url, likes=None, comments=None, watch_time=None, proxy=None):
     global like_count, comment_count
-    with setup_driver(headless=True, session_name=cookies_file.replace("sessions/", "")) as driver:
+    with setup_driver(headless=True, session_name=cookies_file.replace("sessions/", ""), proxy=proxy) as driver:
         if comments:
             comment_list = get_comments()
 

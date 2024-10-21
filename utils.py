@@ -3,7 +3,7 @@ import pickle
 import logging
 from contextlib import contextmanager
 import random
-
+import os
 import requests
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -29,12 +29,24 @@ def load_cookies(driver, cookies_file):
         logging.error(f"Failed to load cookies: {e}")
 
 @contextmanager
-def setup_driver(session_name, headless=True):
+def setup_driver(session_name, headless=True, proxy=None):
     """Set up the Selenium WebDriver with options."""
+
+    if proxy:
+        proxy_type = "Rotating" if "zip" in proxy else proxy
+
     chrome_options = Options()
     chrome_options.add_argument("--disable-notifications")
     chrome_options.add_argument("--disable-popup-blocking")
     chrome_options.add_argument('--log-level=3')  # Suppress logs
+
+    if proxy:
+        if 'zip' in proxy:
+            extension_path = f"{os.path.join(os.getcwd(), proxy.replace('.zip', ''))}"
+            chrome_options.add_argument(f"--load-extension={extension_path}")
+        else:
+            chrome_options.add_argument(f"--proxy-server={proxy}")
+
     if headless:
         chrome_options.add_argument("--headless")
     chrome_options.add_argument("--mute-audio")
@@ -43,7 +55,7 @@ def setup_driver(session_name, headless=True):
     driver.session_name = session_name
     
     try:
-        logging.info(f"Driver initialized for session: {session_name}")
+        logging.info(f"Driver initialized for session: {session_name} | {proxy_type if proxy else ''}")
         yield driver  # This allows the driver to be used inside the 'with' block
     finally:
         driver.quit()
