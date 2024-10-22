@@ -53,8 +53,11 @@ def generate_sessions(email, password):
                 success = False
             else:
                 success = True
-            
+
             if success:
+                if 'two_step_verification' in driver.current_url:
+                    input("Solve the captcha and press any key to continue: ")
+
                 try:
                     WebDriverWait(driver, 10).until(
                         EC.element_to_be_clickable(
@@ -79,6 +82,7 @@ def generate_sessions(email, password):
         # driver.quit()
         return success
 
+
 if __name__ == "__main__":
     # Verify sessions folder
     if not os.path.exists("sessions"):
@@ -100,8 +104,10 @@ if __name__ == "__main__":
                     writer = csv.writer(f)
                     writer.writerow([row['email'], row['password']])
                 count += 1
-                accounts_df.drop(index, inplace=True)  # Remove the account from the DataFrame
-                accounts_df.to_csv('accounts.csv', index=False)  # Write the updated DataFrame back to CSV
+                # Remove the account from the DataFrame
+                accounts_df.drop(index, inplace=True)
+                # Write the updated DataFrame back to CSV
+                accounts_df.to_csv('accounts.csv', index=False)
             else:
                 continue
         except Exception as e:
