@@ -16,6 +16,7 @@ from undetected_chromedriver import Chrome
 # logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+
 def load_cookies(driver, cookies_file):
     """Load cookies from a file and add them to the driver."""
     try:
@@ -24,9 +25,11 @@ def load_cookies(driver, cookies_file):
         for cookie in cookies:
             driver.add_cookie(cookie)
         driver.refresh()
-        logging.info(f"Logged in successfully with {cookies_file.replace('sessions/', '')}")
+        logging.info(f"Logged in successfully with {
+                     cookies_file.replace('sessions/', '')}")
     except Exception as e:
         logging.error(f"Failed to load cookies: {e}")
+
 
 @contextmanager
 def setup_driver(session_name, headless=True, proxy=None):
@@ -42,7 +45,8 @@ def setup_driver(session_name, headless=True, proxy=None):
 
     if proxy:
         if 'zip' in proxy:
-            extension_path = f"{os.path.join(os.getcwd(), proxy.replace('.zip', ''))}"
+            extension_path = f"{os.path.join(
+                os.getcwd(), proxy.replace('.zip', ''))}"
             chrome_options.add_argument(f"--load-extension={extension_path}")
         else:
             chrome_options.add_argument(f"--proxy-server={proxy}")
@@ -53,13 +57,15 @@ def setup_driver(session_name, headless=True, proxy=None):
 
     driver = Chrome(options=chrome_options)
     driver.session_name = session_name
-    
+
     try:
-        logging.info(f"Driver initialized for session: {session_name} | {proxy_type if proxy else ''}")
+        logging.info(f"Driver initialized for session: {
+                     session_name} | {proxy_type if proxy else ''}")
         yield driver  # This allows the driver to be used inside the 'with' block
     finally:
         driver.quit()
         logging.info(f"Driver closed for session: {session_name}")
+
 
 def get_comments():
     """Retrieve comments from a JSON file."""
@@ -72,43 +78,53 @@ def get_comments():
         logging.error(f"Failed to load comments: {e}")
         return []
 
+
 def like(driver):
     """Click the like button on a post."""
     try:
         WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.CSS_SELECTOR, '[aria-label="Like"]'))
+            EC.element_to_be_clickable(
+                (By.CSS_SELECTOR, '[aria-label="Like"]'))
         ).click()
         logging.info(f"Post liked with {driver.session_name}")
     except:
         logging.info(f"Post already liked with {driver.session_name}")
+
 
 def comment(driver, text):
     """Leave a comment on a post."""
     try:
         # Open comment box
         WebDriverWait(driver, 30).until(
-            EC.element_to_be_clickable((By.CSS_SELECTOR, '[aria-label="Comment"]'))
+            EC.element_to_be_clickable(
+                (By.CSS_SELECTOR, '[aria-label="Comment"]'))
         ).click()
         # Write comment
         WebDriverWait(driver, 30).until(
-            EC.element_to_be_clickable((By.CSS_SELECTOR, '[aria-label="Write a comment…"]'))
+            EC.element_to_be_clickable(
+                (By.CSS_SELECTOR, '[aria-label="Write a comment…"]'))
         ).send_keys(text)
         # Send
         WebDriverWait(driver, 30).until(
-            EC.element_to_be_clickable((By.CSS_SELECTOR, '[aria-label="Comment"]'))
+            EC.element_to_be_clickable(
+                (By.CSS_SELECTOR, '[aria-label="Comment"]'))
         ).click()
         logging.info(f'Commented with {driver.session_name}: "{text}"')
     except Exception as e:
         logging.error(f"Failed to comment with {driver.session_name}")
 
+
 def verify_login(driver):
     try:
         WebDriverWait(driver, 20).until(
-            EC.element_to_be_clickable((By.CSS_SELECTOR, '[aria-label="Your profile"]'))
+            EC.element_to_be_clickable(
+                (By.CSS_SELECTOR, '[aria-label="Your profile"]'))
         ).click()
     except:
-        logging.error(f"There is an issue with the account : {driver.session_name}. Skipping...")
+        logging.error(f"There is an issue with the account : {
+                      driver.session_name}. Skipping...")
         driver.quit()
+
 
 def getImage(size='1080'):
     url = f'https://picsum.photos/{size}'
@@ -120,14 +136,17 @@ def getImage(size='1080'):
         file.write(response.content)
     return fileName
 
+
 def remove_non_bmp_characters(text):
     return ''.join(char for char in text if ord(char) <= 0xFFFF)
+
 
 def getCaption():
     with open('captions.json', encoding='utf-8') as f:
         data = json.load(f)
         caption = random.choice(data['captions'])
         return remove_non_bmp_characters(caption + " ")
+
 
 def getBio():
     with open('bio.json', encoding='utf-8') as f:
@@ -140,3 +159,9 @@ def get_proxies():
     with open("internal/working_proxies.txt", "r") as f:
         proxies = f.readlines()
     return proxies
+
+
+def wait_for_page_load(driver):
+    while True:
+        if driver.execute_script("return document.readyState") == "complete":
+            break

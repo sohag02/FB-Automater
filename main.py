@@ -18,6 +18,8 @@ from utils import comment, get_comments, get_proxies, like, load_cookies, setup_
 from db import update_user_profile, get_user_profile, insert_user_profile
 from fbProfile import setProfile
 from friend import getFriends, accept_friend_requests
+from search import search
+from utils import wait_for_page_load
 
 from proxy import check_proxies
 from proxy_extension import create_proxy_auth_extension
@@ -82,7 +84,11 @@ def post_status(session_name):
 
 def navigate_to_reels(driver, profile_url):
     logging.info("Looking for Reels...")
-    driver.get(profile_url)
+    wait_for_page_load(driver)
+    if 'id' in driver.current_url:
+        driver.get(f"{driver.current_url}&sk=reels_tab")
+    else:
+        driver.get(f"{driver.current_url}reels")
     time.sleep(5)
     driver.execute_script("window.scrollTo(0, 500);")
     time.sleep(3)
@@ -183,8 +189,18 @@ def watch_reels_from_username(session_file: str):
         getFriends(driver)
         accept_friend_requests(driver)
 
-        navigate_to_reels(
-            driver, f'https://www.facebook.com/{config.username}/reels/')
+        if config.username:
+            profile_url = f'https://www.facebook.com/{config.username}'
+        if config.user_id:
+            profile_url = f'https://www.facebook.com/profile.php?id={config.user_id}&sk=reels_tab'
+
+        if config.use_search:
+            if config.user_id:
+                search(driver, config.keywords[0], config.scroll_time*60, config.profile_name, user_id=config.user_id)
+            else:
+                search(driver, config.keywords[0], config.scroll_time*60, config.profile_name, username=config.username)
+
+        navigate_to_reels(driver, profile_url=profile_url)
         watch_reels(driver, config.range, config.watch_time,
                     config.likes, config.comments)
 
@@ -233,7 +249,7 @@ if __name__ == "__main__":
         subprocess.run(['py', 'login.py'])
         exit()
 
-    if config.username:
+    if config.username or config.user_id:
         for i in range(0, len(session_files), config.threads):
             batch = session_files[i:i + config.threads]
             process_batch(watch_reels_from_username,
