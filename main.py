@@ -90,8 +90,14 @@ def navigate_to_reels(driver, profile_url):
 
 def watch_reels_from_link(link, watch_time, session_name, likes=None, comments=None):
     global like_count, comment_count
-
-    with setup_driver(session_name, headless=config.headless) as driver:
+    proxy = None
+    if config.use_proxy:
+        if config.rotating_proxies:
+            proxy = extension
+        else:
+            proxy = proxies[0]
+            proxies.pop(0)
+    with setup_driver(session_name, headless=config.headless, proxy=proxy) as driver:
         driver.get('https://www.facebook.com/')
         load_cookies(driver, f'sessions/{session_name}')
 
@@ -154,6 +160,7 @@ def watch_reels(driver, count, watch_time, likes=None, comments=None):
 
 
 def watch_reels_from_username(session_file: str):
+    proxy = None
     if config.use_proxy:
         if config.rotating_proxies:
             proxy = extension
