@@ -4,17 +4,24 @@ import logging
 from contextlib import contextmanager
 import random
 import os
+from urllib.parse import parse_qs, urlparse
 import requests
-from selenium import webdriver
+
+# from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 from undetected_chromedriver import Chrome
+from seleniumwire import webdriver
+import re
+
 
 # Set up logging
 # logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+
+logging.getLogger("seleniumwire").setLevel(logging.ERROR)
 
 
 def load_cookies(driver, cookies_file):
@@ -41,10 +48,10 @@ def setup_driver(session_name, headless=True, proxy=None):
     chrome_options = Options()
     chrome_options.add_argument("--disable-notifications")
     chrome_options.add_argument("--disable-popup-blocking")
-    chrome_options.add_argument('--log-level=3')  # Suppress logs
+    chrome_options.add_argument("--log-level=3")  # Suppress logs
 
     if proxy:
-        if 'zip' in proxy:
+        if "zip" in proxy:
             extension_path = f"{os.path.join(
                 os.getcwd(), proxy.replace('.zip', ''))}"
             chrome_options.add_argument(f"--load-extension={extension_path}")
@@ -73,7 +80,7 @@ def get_comments():
         with open("comments.json", "r") as file:
             comments = json.load(file)
         logging.info("Comments loaded successfully.")
-        return comments['comments']
+        return comments["comments"]
     except Exception as e:
         logging.error(f"Failed to load comments: {e}")
         return []
@@ -83,8 +90,7 @@ def like(driver):
     """Click the like button on a post."""
     try:
         WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable(
-                (By.CSS_SELECTOR, '[aria-label="Like"]'))
+            EC.element_to_be_clickable((By.CSS_SELECTOR, '[aria-label="Like"]'))
         ).click()
         logging.info(f"Post liked with {driver.session_name}")
     except:
@@ -96,18 +102,17 @@ def comment(driver, text):
     try:
         # Open comment box
         WebDriverWait(driver, 30).until(
-            EC.element_to_be_clickable(
-                (By.CSS_SELECTOR, '[aria-label="Comment"]'))
+            EC.element_to_be_clickable((By.CSS_SELECTOR, '[aria-label="Comment"]'))
         ).click()
         # Write comment
         WebDriverWait(driver, 30).until(
             EC.element_to_be_clickable(
-                (By.CSS_SELECTOR, '[aria-label="Write a comment…"]'))
+                (By.CSS_SELECTOR, '[aria-label="Write a comment…"]')
+            )
         ).send_keys(text)
         # Send
         WebDriverWait(driver, 30).until(
-            EC.element_to_be_clickable(
-                (By.CSS_SELECTOR, '[aria-label="Comment"]'))
+            EC.element_to_be_clickable((By.CSS_SELECTOR, '[aria-label="Comment"]'))
         ).click()
         logging.info(f'Commented with {driver.session_name}: "{text}"')
     except Exception as e:
@@ -117,8 +122,7 @@ def comment(driver, text):
 def verify_login(driver):
     try:
         WebDriverWait(driver, 20).until(
-            EC.element_to_be_clickable(
-                (By.CSS_SELECTOR, '[aria-label="Your profile"]'))
+            EC.element_to_be_clickable((By.CSS_SELECTOR, '[aria-label="Your profile"]'))
         ).click()
     except:
         logging.error(f"There is an issue with the account : {
@@ -126,32 +130,32 @@ def verify_login(driver):
         driver.quit()
 
 
-def getImage(size='1080'):
-    url = f'https://picsum.photos/{size}'
+def getImage(size="1080"):
+    url = f"https://picsum.photos/{size}"
     response = requests.get(url)
     # random name
-    fileName = f'post_{random.randint(0, 1000)}.jpg'
+    fileName = f"post_{random.randint(0, 1000)}.jpg"
     # Download image
-    with open(fileName, 'wb') as file:
+    with open(fileName, "wb") as file:
         file.write(response.content)
     return fileName
 
 
 def remove_non_bmp_characters(text):
-    return ''.join(char for char in text if ord(char) <= 0xFFFF)
+    return "".join(char for char in text if ord(char) <= 0xFFFF)
 
 
 def getCaption():
-    with open('captions.json', encoding='utf-8') as f:
+    with open("captions.json", encoding="utf-8") as f:
         data = json.load(f)
-        caption = random.choice(data['captions'])
+        caption = random.choice(data["captions"])
         return remove_non_bmp_characters(caption + " ")
 
 
 def getBio():
-    with open('bio.json', encoding='utf-8') as f:
+    with open("bio.json", encoding="utf-8") as f:
         data = json.load(f)
-        bio = random.choice(data['bio'])
+        bio = random.choice(data["bio"])
         return remove_non_bmp_characters(bio + " ")
 
 
@@ -165,3 +169,22 @@ def wait_for_page_load(driver):
     while True:
         if driver.execute_script("return document.readyState") == "complete":
             break
+
+
+def extract_user_id(facebook_url: str) -> str:
+    # Regular expression pattern to match the user ID in the URL
+    pattern = r"/user/(\d+)/"
+    match = re.search(pattern, facebook_url)
+
+    if match:
+        return match.group(1)  # Return the captured user ID
+    else:
+        return None  # Return None if no match is found
+
+
+def extract_facebook_id(url: str) -> str:
+    # Parse the URL to extract the query parameters
+    parsed_url = urlparse(url)
+    query_params = parse_qs(parsed_url.query)
+
+    return query_params.get("id", [None])[0]

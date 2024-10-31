@@ -56,6 +56,34 @@ class Config():
 
         # Group Member extracter
         self.group_username = config.get('group', 'username', fallback=None)
+        self.member_count = config.getint('group', 'count', fallback=None)
+
+        # Message Sender
+        self.media_msg_sequence = config.getint('message sender', 'media_msg_sequence', fallback=None)
+        self.msg_per_session = config.getint('message sender', 'msg_per_session', fallback=None)
+        self.csv_file = config.get('message sender', 'csv_file', fallback=None)
+        self.users = config.getint('message sender', 'users', fallback=None)
+
+        # User Scrapper
+        self.keyword = config.get('user scrapper', 'keyword', fallback=None)
+        self.location = config.get('user scrapper', 'location', fallback=None)
+        self.user_count = config.getint('user scrapper', 'user_count', fallback=None)
+
+        # Group Scrapper
+        self.group_count = config.getint('group scrapper', 'group_count', fallback=None)
+        self.group_keyword = config.get('group scrapper', 'keyword', fallback=None)
+        self.group_followers = config.getint('group scrapper', 'followers', fallback=None)
+        self.group_posts = config.getint('group scrapper', 'posts', fallback=None)
+
+        # Group Poster
+        self.group_post_count = config.getint('group poster', 'group_count', fallback=None)
+        self.post_per_session = config.getint('group poster', 'post_per_session', fallback=None)
+        self.sessions = config.getint('group poster', 'sessions', fallback=None)
+        self.delay = config.getint('group poster', 'delay', fallback=None)
+
+        # Like Scrapper
+        self.url = config.get('like scrapper', 'url', fallback=None)
+        self.post_range = config.getint('like scrapper', 'range', fallback=None)
 
         # Check if config is valid
         self.check_config()

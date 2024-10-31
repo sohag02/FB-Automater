@@ -12,8 +12,8 @@ from utils import wait_for_page_load
 logger = logging.getLogger(__name__)
 
 
-def scroll_down(driver: Chrome):
-    driver.execute_script("window.scrollBy(0, 500);")
+def scroll_down(driver: Chrome, amt=500):
+    driver.execute_script(f"window.scrollBy(0, {amt})")
 
 
 def search(driver: Chrome, query: str, search_duration, name, user_id=None, username=None):

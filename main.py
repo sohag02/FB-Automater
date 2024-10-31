@@ -45,13 +45,13 @@ if config.use_proxy and not config.rotating_proxies:
     proxies = get_proxies()
 
 
-def load_sessions():
+def load_sessions(count=config.accounts):
     if not os.path.exists("sessions"):
         logging.error("No Sessions Found")
         exit()
 
     if sessions := os.listdir("sessions"):
-        return sessions[:config.accounts]
+        return sessions[:count] if count else sessions
     logging.error("No Sessions Found")
     exit()
 
