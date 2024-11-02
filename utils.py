@@ -124,10 +124,12 @@ def verify_login(driver):
         WebDriverWait(driver, 20).until(
             EC.element_to_be_clickable((By.CSS_SELECTOR, '[aria-label="Your profile"]'))
         ).click()
+        return True
     except:
         logging.error(f"There is an issue with the account : {
                       driver.session_name}. Skipping...")
         driver.quit()
+        return False
 
 
 def getImage(size="1080"):

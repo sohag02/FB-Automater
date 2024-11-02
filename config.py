@@ -55,11 +55,11 @@ class Config():
                 self.proxy_file = config.get('proxy', 'proxy_file', fallback=None)
 
         # Group Member extracter
-        self.group_username = config.get('group', 'username', fallback=None)
+        self.group_csv_file = config.get('group', 'csv_file', fallback=None)
         self.member_count = config.getint('group', 'count', fallback=None)
 
         # Message Sender
-        self.media_msg_sequence = config.getint('message sender', 'media_msg_sequence', fallback=None)
+        self.msg_delay = config.getint('message sender', 'delay', fallback=None)
         self.msg_per_session = config.getint('message sender', 'msg_per_session', fallback=None)
         self.csv_file = config.get('message sender', 'csv_file', fallback=None)
         self.users = config.getint('message sender', 'users', fallback=None)
@@ -74,12 +74,14 @@ class Config():
         self.group_keyword = config.get('group scrapper', 'keyword', fallback=None)
         self.group_followers = config.getint('group scrapper', 'followers', fallback=None)
         self.group_posts = config.getint('group scrapper', 'posts', fallback=None)
+        self.timeout = config.getint('group scrapper', 'timeout', fallback=None)
 
         # Group Poster
         self.group_post_count = config.getint('group poster', 'group_count', fallback=None)
         self.post_per_session = config.getint('group poster', 'post_per_session', fallback=None)
         self.sessions = config.getint('group poster', 'sessions', fallback=None)
         self.delay = config.getint('group poster', 'delay', fallback=None)
+        self.anonymous = config.getboolean('group poster', 'anonymous', fallback=None)
 
         # Like Scrapper
         self.url = config.get('like scrapper', 'url', fallback=None)

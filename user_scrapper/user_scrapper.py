@@ -49,7 +49,7 @@ def scrape_users(driver: Chrome):
     unique_users = set()
 
     logging.info("Scraping users...")
-    while len(unique_users) < config.user_count:
+    while config.user_count == 0 or len(unique_users) < config.user_count:
         users = driver.find_elements(
             By.XPATH,
             '//div[@role="article"]//a[starts-with(@href, "https://www.facebook.com/profile.php?id=")]',
@@ -81,7 +81,9 @@ def main():
     with setup_driver(session, config.headless, proxy=proxy) as driver:
         driver.get("https://www.facebook.com/")
         load_cookies(driver, f"sessions/{session}")
-        verify_login(driver)
+        res = verify_login(driver)
+        if not res:
+            exit()
         scrape_users(driver)
 
 

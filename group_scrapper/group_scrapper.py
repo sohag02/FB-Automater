@@ -77,6 +77,8 @@ def scrape_groups(driver: Chrome):
     driver.get(f"https://www.facebook.com/search/groups?q={config.group_keyword}")
     wait_for_page_load(driver)
     unique_groups = set()
+    last_added_time = time.time()  # Track the last time a group was added
+    timeout_duration = config.timeout * 60 * 60  # Convert timeout to seconds
 
     logging.info("Scraping groups...")
     while config.group_count == 0 or len(unique_groups) < config.group_count:
@@ -84,10 +86,6 @@ def scrape_groups(driver: Chrome):
             By.XPATH,
             '//div[@role="article"]',
         )
-        # groups = driver.find_elements(
-        #     By.XPATH,
-        #     '//div[@role="article"]//a[starts-with(@href, "https://www.facebook.com/groups/")]',
-        # )
         for article in articles:
             try:
                 group = article.find_element(
@@ -99,9 +97,7 @@ def scrape_groups(driver: Chrome):
                     By.XPATH,
                     './/span[contains(@class, "x1lliihq x6ikm8r x10wlt62 x1n2onr6")]',
                 )
-                # print(group_id)
                 group_info = parse_group_info(details.text)
-                # print(group_info)
                 if group_id not in unique_groups:
                     if group_info["members"] < config.group_followers:
                         continue
@@ -109,15 +105,20 @@ def scrape_groups(driver: Chrome):
                         continue
                     with open("groups.csv", "a", newline='') as f:
                         file = csv.writer(f)
-                        # write row with id, name, status, members, posts
                         file.writerow(
                             [group_id, group_info["members"], group_info["posts"]]
                         )
-                        # f.write(f"{group_id}\n")
                     unique_groups.add(group_id)
+                    last_added_time = time.time()  # Update last added time
                     print("Scrapped Groups : ", len(unique_groups), end="\r")
             except Exception:
                 continue
+        
+        # Check if the timeout has passed since the last addition
+        if time.time() - last_added_time > timeout_duration:
+            logging.info(f"No new unique groups added for {config.timeout} hours. Exiting...")
+            break
+        
         scroll_down(driver)
         time.sleep(2)
 
@@ -137,7 +138,9 @@ def main():
     with setup_driver(session, config.headless, proxy=proxy) as driver:
         driver.get("https://www.facebook.com/")
         load_cookies(driver, f"sessions/{session}")
-        verify_login(driver)
+        res = verify_login(driver)
+        if not res:
+            exit()
         scrape_groups(driver)
 
 

@@ -23,6 +23,7 @@ import pandas as pd
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from datetime import datetime
+from selenium.webdriver.common.action_chains import ActionChains
 
 config = Config()
 
@@ -46,23 +47,23 @@ if config.use_proxy and not config.rotating_proxies:
     proxies = get_proxies()
 
 POST_DIR = os.path.join(os.getcwd(), "group_poster", "group_posts")
-CAPTION_FILE = os.path.join(os.getcwd(), "group_poster", "captions.json")
+CAPTION_FILE = os.path.join(os.getcwd(), "group_poster", "captions.txt")
+
 
 def get_caption():
     with open(CAPTION_FILE, encoding="utf-8") as f:
-        data = json.load(f)
-        return random.choice(data["captions"])
-    
+        data = f.readlines()
+    return random.choice(data).strip()
+
+
 def get_post():
-    posts = os.listdir(POST_DIR)
-    if posts:
-        return random.choice(posts)
-    else:
-        return None
-    
+    return random.choice(posts) if (posts := os.listdir(POST_DIR)) else None
+
+
 def load_groups():
     df = pd.read_csv("groups.csv")
     return df['group_id'].tolist()
+
 
 def post_in_group(driver: Chrome, group_id: str):
     try:
@@ -74,43 +75,98 @@ def post_in_group(driver: Chrome, group_id: str):
                 (By.XPATH, "//span[contains(text(), \"Write something\")]"))
         ).click()
 
+        input_box = None
+        anonymous_allowed = False
+        final_btn_selector = 'Post'
+        # anonymous post
+        if config.anonymous:
+            try:
+                WebDriverWait(driver, 3).until(
+                    EC.element_to_be_clickable(
+                        (By.CSS_SELECTOR,
+                         '[aria-label="Anonymous post toggle"]')
+                    )
+                ).click()
+                WebDriverWait(driver, 3).until(
+                    EC.element_to_be_clickable(
+                        (By.CSS_SELECTOR, '[aria-label="Got it"]')
+                    )
+                ).click()
+
+                input_box = WebDriverWait(driver, 10).until(
+                    EC.element_to_be_clickable(
+                        (By.CSS_SELECTOR,
+                         '[aria-label="Submit an anonymous post…"]')
+                    )
+                )
+                anonymous_allowed = True
+                final_btn_selector = 'Submit'
+            except:
+                pass
+
         caption = get_caption()
-        WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable(
-                (By.CSS_SELECTOR, '[aria-label="Create a public post…"]')
+        if not input_box:
+            input_box = WebDriverWait(driver, 10).until(
+                EC.element_to_be_clickable(
+                    (By.CSS_SELECTOR, '[aria-label="Create a public post…"]')
+                )
             )
-        ).send_keys(caption)
+
+        input_box.send_keys(caption)
 
         post = get_post()
 
-        WebDriverWait(driver, 10).until(
+        upload_btn = WebDriverWait(driver, 10).until(
             EC.element_to_be_clickable(
                 (By.CSS_SELECTOR, '[aria-label="Photo/video"]')
             )
-        ).click()
+        )
+        if not anonymous_allowed:
+            upload_btn.click()
 
+        file_input = driver.find_element(By.XPATH, '//div[@role="dialog"]//input[@type="file"]')
+
+        # Make file input visible
+        driver.execute_script("""
+            arguments[0].style = {};
+            arguments[0].style.display = 'block';
+            arguments[0].style.visibility = 'visible';
+            arguments[0].style.opacity = '1';
+            arguments[0].style.height = '100px';
+            arguments[0].style.width = '100px';
+            arguments[0].style.position = 'fixed';
+            arguments[0].style.top = '0';
+            arguments[0].style.left = '0';
+            arguments[0].style.zIndex = '9999999';
+            arguments[0].style.border = '5px solid red';
+            arguments[0].style.backgroundColor = '#ffffff';
+        """, file_input)
+
+        # Prepare absolute file path
+        path:str = os.path.abspath(os.path.join(POST_DIR, post))
+
+        file_input.send_keys(path)
         file_input = driver.find_element(By.XPATH, "//input[@type='file']")
-        print(file_input.get_attribute("accept"))
-        print(file_input.get_attribute("class"))
-        driver.execute_script("arguments[0].style.display = 'block';", file_input)
-        print("exe")
-        time.sleep(5)
-        file_input.send_keys(os.path.join(POST_DIR, post))
-        print("keys")
-        time.sleep(5)
 
-        # WebDriverWait(driver, 10).until(
-        #     EC.element_to_be_clickable(
-        #         (By.CSS_SELECTOR, '[aria-label="Post"]')
-        #     )
-        # ).click()
-        logging.info(f"Successfully posted in {group_id} with {driver.session_name}")
+
+        post_btn = WebDriverWait(driver, 10).until(
+            EC.element_to_be_clickable(
+                (By.XPATH, f'//div[@role="dialog"]//div[@aria-label="{final_btn_selector}" and @role="button"]')
+            )
+        )
         time.sleep(5)
+        actions = ActionChains(driver)
+        # driver.execute_script("arguments[0].style.border = '5px solid red';", post_btn)
+        actions.move_to_element(post_btn).click().perform()
+        # driver.execute_script("arguments[0].click();", post_btn)
+        # post_btn.click()
+        logging.info(f"Successfully posted in {group_id} with {driver.session_name}")
+        time.sleep(10)
         return True
     except Exception:
-        # raise
         logging.error(f"Failed to post in {group_id} with {driver.session_name}")
         return False
+
 
 def create_csv_log():
     today = datetime.now().date().strftime("%d-%m-%Y")
@@ -140,14 +196,18 @@ def main():
         with setup_driver(session, headless=config.headless, proxy=proxy) as driver:
             driver.get("https://www.facebook.com/")
             load_cookies(driver, f"sessions/{session}")
-            verify_login(driver)
+            res = verify_login(driver)
+            if not res:
+                continue
             for _ in range(config.post_per_session):
                 group_id = groups[0]
                 groups.pop(0)
                 if res := post_in_group(driver, group_id):
-                    with open(file, "a") as f:
+                    with open(file, "a", newline='') as f:
                         writer = csv.writer(f)
                         writer.writerow([group_id, session])
                 time.sleep(config.delay)
+
+
 if __name__ == "__main__":
     main()

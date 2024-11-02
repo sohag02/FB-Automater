@@ -76,7 +76,9 @@ def scrape_members(session_file, username):
         driver.get("https://www.facebook.com/")
         load_cookies(driver, f"sessions/{session_file}")
 
-        verify_login(driver)
+        res = verify_login(driver)
+        if not res:
+            return
         driver.get(f"https://www.facebook.com/groups/{username}/members")
         wait_for_page_load(driver)
         time.sleep(5)
@@ -85,8 +87,8 @@ def scrape_members(session_file, username):
         # Initialize an empty set to store unique member URLs
         unique_members = set()
 
-        with open(f"{config.group_username}.csv", "w") as f:
-            f.write("id\n")
+        with open(f"{username}.csv", "w") as f:
+            pass
 
         # scroll_check = 0
 
@@ -108,7 +110,7 @@ def scrape_members(session_file, username):
                         print("Scrapped Members : ", len(unique_members), end="\r")
                         df = pd.DataFrame({"id": [member_id]})
                         df.to_csv(
-                            f"{config.group_username}.csv",
+                            f"{username}.csv",
                             mode="a",
                             index=False,
                             header=False,
@@ -117,17 +119,35 @@ def scrape_members(session_file, username):
                 scroll_down(driver)
                 time.sleep(2)
 
-                if config.member_count and len(unique_members) == config.member_count:
-                    logging.info(f"Total Members scraped: {len(unique_members)}")
+                if config.member_count and len(unique_members) >= config.member_count:
                     break
 
             except Exception as e:
                 print(e)
                 break
 
+        logging.info(f"Total Members scraped: {len(unique_members)}")
+        logging.info(f"Saved in {username}.csv")
+
+def load_groups():
+    df = pd.read_csv(config.group_csv_file, header=None)  # Load CSV without headers
+    if df.shape[0] > 0:  # Check if the DataFrame is not empty
+        # Check if the first row is a header (assuming headers are strings)
+        if not df[0].apply(lambda x: isinstance(x, str)).all():
+            return df[0].tolist()  # Return the first column as a list
+        else:
+            return df.iloc[1:, 0].tolist()  # Exclude the header row and return the first column as a list
+    return []  # Return an empty list if the DataFrame is empty
+
 
 if __name__ == "__main__":
     sessions = load_sessions()
     session = random.choice(sessions)
 
-    scrape_members(session, config.group_username)
+    groups = load_groups()
+    if not groups:
+        logging.error("No Groups Found")
+        exit()
+
+    for group in groups:
+        scrape_members(session, group)
