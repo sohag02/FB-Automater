@@ -120,7 +120,7 @@ def send_message(driver:Chrome, user_id, messages:list):
 def main():
     sessions = load_sessions(count=None)
     logging.info(f"{len(sessions)} Sessions Found")
-    users = pd.read_csv(config.csv_file, header=None, index_col=None)
+    users = pd.read_csv(config.msg_csv_file, header=None, index_col=None)
 
     # create requested_users.csv
     if not os.path.exists('message_sender/requested_users.csv'):
@@ -172,7 +172,7 @@ def main():
             users = users[~users[0].isin(current_batch)]
 
     remaining_users = users[~users[0].isin(processed_users)][[]]
-    remaining_users.to_csv(config.csv_file, header=False, index=False)
+    remaining_users.to_csv(config.msg_csv_file, header=False, index=False)
     logging.info(f"Messages sent to {user_count} users")
 
 

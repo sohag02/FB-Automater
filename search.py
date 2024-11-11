@@ -26,7 +26,7 @@ def search(driver: Chrome, query: str, search_duration, name, user_id=None, user
     if user_id:
         acc_url = f'https://www.facebook.com/profile.php?id={user_id}'
     else:
-        acc_url = f'https://www.facebook.com/@{username}'
+        acc_url = f'https://www.facebook.com/{username}'
 
     start_time = time.time()
 

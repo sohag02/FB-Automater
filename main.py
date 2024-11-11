@@ -84,11 +84,12 @@ def post_status(session_name):
 
 def navigate_to_reels(driver, profile_url):
     logging.info("Looking for Reels...")
+    driver.get(profile_url)
     wait_for_page_load(driver)
     if 'id' in driver.current_url:
         driver.get(f"{driver.current_url}&sk=reels_tab")
     else:
-        driver.get(f"{driver.current_url}reels")
+        driver.get(f"{driver.current_url}/reels")
     time.sleep(5)
     driver.execute_script("window.scrollTo(0, 500);")
     time.sleep(3)
@@ -206,9 +207,10 @@ def watch_reels_from_username(session_file: str):
 
 
 def watch_reels_from_csv():
+    logging.info(f"Watching reels from {config.csv_file}")
     with open(config.csv_file, "r") as file:
-        reels = csv.reader(file)
-        for i in range(0, len(reels), config.threads):
+        reels = list(csv.reader(file))
+        for i in range(0, config.range, config.threads):
             batch = reels[i:i + config.threads]
             sessions = session_files[i:i + config.threads]
             args = [
@@ -221,7 +223,9 @@ def watch_reels_from_csv():
                 )
                 for index, reel in enumerate(batch)
             ]
-            process_batch(watch_reels_from_link, args)
+            # process_batch(watch_reels_from_link, args)
+            with Pool(config.threads) as pool:
+                pool.starmap(watch_reels_from_link, args)
 
 
 def start_processes(target_func, args_list):
@@ -235,19 +239,12 @@ def start_processes(target_func, args_list):
         p.join()
 
 
-def process_batch(func: callable, sessions_batch: list, size=5):
+def process_batch(func: callable, sessions_batch: list, size=1):
     with Pool(size) as pool:
         pool.map(func, sessions_batch)
 
 
 if __name__ == "__main__":
-
-    res = input("Run Main Script (Press 1) / Run Login Script (Press 2): ")
-
-    if res == '2':
-        import subprocess
-        subprocess.run(['py', 'login.py'])
-        exit()
 
     if config.username or config.user_id:
         for i in range(0, len(session_files), config.threads):
@@ -257,6 +254,7 @@ if __name__ == "__main__":
 
     elif config.use_csv:
         watch_reels_from_csv()
+        exit()
 
     elif config.livestream_link:
         logging.info(f"Joining Livestream: {config.livestream_link}")

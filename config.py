@@ -61,7 +61,7 @@ class Config():
         # Message Sender
         self.msg_delay = config.getint('message sender', 'delay', fallback=None)
         self.msg_per_session = config.getint('message sender', 'msg_per_session', fallback=None)
-        self.csv_file = config.get('message sender', 'csv_file', fallback=None)
+        self.msg_csv_file = config.get('message sender', 'csv_file', fallback=None)
         self.users = config.getint('message sender', 'users', fallback=None)
 
         # User Scrapper
@@ -111,7 +111,8 @@ class Config():
             self.use_csv = True
             # Get no. of reels from csv
             with open(self.csv_file, "r") as file:
-                self.range = len(csv.reader(file))
+                content = csv.reader(file)
+                self.range = len(list(content))
         else:
             self.use_csv = False
             
